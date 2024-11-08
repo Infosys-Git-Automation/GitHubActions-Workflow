@@ -39,9 +39,6 @@ jobs:
         echo "Org Name: ${{ env.ORG_USERNAME }}"
         echo "Repo Name: ${{ env.REPO_NAME }}"
 
-            echo "Org Name: ${{ env.ORG_USERNAME }}"
-        echo "Repo Name: ${{ env.REPO_NAME }}"
-
   trigger-main-workflow:
     needs: extract-inputs
     runs-on: ubuntu-latest
