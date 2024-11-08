@@ -51,6 +51,10 @@ jobs:
         run: |
           ORG=${{ env.ORG_USERNAME }}
           REPO=${{ env.REPO_NAME }}
+          if [ -z "$ORG" ] || [ -z "$REPO" ]; then
+            echo "Organization or repository name not provided"
+            exit 1
+          fi
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://api.github.com/repos/$ORG/$REPO)
           if [ "$RESPONSE" -ne 200 ]; then
             echo "Invalid organization or repository"
