@@ -40,10 +40,22 @@ jobs:
         echo "Repo Name: ${{ env.REPO_NAME }}"
 
   security:
+    needs: extract-and-trigger
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v2
+
+      - name: Validate user
+        id: validate_user
+        run: |
+          ORG=${{ env.ORG_USERNAME }}
+          REPO=${{ env.REPO_NAME }}
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://api.github.com/repos/$ORG/$REPO)
+          if [ "$RESPONSE" -ne 200 ]; then
+            echo "Invalid organization or repository"
+            exit 1
+          fi
 
       - name: Set up Python
         uses: actions/setup-python@v4
