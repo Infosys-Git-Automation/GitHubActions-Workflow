@@ -1,6 +1,7 @@
-name: Extract Inputs & Trigger Main Workflow
+name: Solution Workflow
 
 on:
+  push:
   pull_request:
     types: [opened, edited]
 
@@ -59,6 +60,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests prettytable jq 
                          
+    - name: Install Snyk & Authenticate
+      run: |
+          sudo npm install -g snyk
+          snyk auth ${SNYK_TOKEN}
+          
     - name: Run Snyk to check for vulnerabilities
       uses: snyk/actions/python@master
       continue-on-error: true
