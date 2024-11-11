@@ -5,7 +5,7 @@ on:
     types: [opened, edited]
 
 jobs:
-  extract-and-trigger:
+  security:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,29 +26,17 @@ jobs:
       id: extract
       run: |
         PR_BODY=$(jq -r '.pull_request.body' $GITHUB_EVENT_PATH)
-        echo "Extracted PR Body: $PR_BODY"
         ORG_USERNAME=$(echo "$PR_BODY" | grep -oP '(?<=- \*\*Org Name\*\*: \[).*?(?=\])' || echo "Not provided")
         REPO_NAME=$(echo "$PR_BODY" | grep -oP '(?<=- \*\*Repo Name\*\*: \[).*?(?=\])' || echo "Not provided")
-        echo "Extracted Org Name: $ORG_USERNAME"
-        echo "Extracted Repo Name: $REPO_NAME"
         echo "ORG_USERNAME=$ORG_USERNAME" >> $GITHUB_ENV
         echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
 
-    - name: Display extracted inputs
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Validate user
+      id: validate_user
       run: |
-        echo "Org Name: ${{ env.ORG_USERNAME }}"
-        echo "Repo Name: ${{ env.REPO_NAME }}"
-
-  security:
-    needs: extract-and-trigger
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Validate user
-        id: validate_user
-        run: |
           ORG=${{ env.ORG_USERNAME }}
           REPO=${{ env.REPO_NAME }}
           if [ -z "$ORG" ] || [ -z "$REPO" ]; then
@@ -61,49 +49,49 @@ jobs:
             exit 1
           fi
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
           python-version: '3.x'
 
-      - name: Install dependencies
-        run: |
+    - name: Install dependencies
+      run: |
           python -m pip install --upgrade pip
           pip install requests prettytable jq 
                          
-      - name: Run Snyk to check for vulnerabilities
-        uses: snyk/actions/python@master
-        continue-on-error: true
-        env:
+    - name: Run Snyk to check for vulnerabilities
+      uses: snyk/actions/python@master
+      continue-on-error: true
+      env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
+      with:
           command: code test
           args: --sarif-file-output=snyk.sarif
 
-      - name: Print the Snyk SARIF file
-        run: cat snyk.sarif
+    - name: Print the Snyk SARIF file
+      run: cat snyk.sarif
 
-      - name: Total No. of Security Issues
-        run: |
+    - name: Total No. of Security Issues
+      run: |
           length=$(cat snyk.sarif | jq '.runs[0].results | length')
           echo "Results_Length=$length" >> $GITHUB_ENV
 
-      - name: Run Python script to convert SARIF to CSV
-        run: python code1.py
+    - name: Run Python script to convert SARIF to CSV
+      run: python code1.py
 
-      - name: Upload CSV file as artifact
-        uses: actions/upload-artifact@v4
-        with:
+    - name: Upload CSV file as artifact
+      uses: actions/upload-artifact@v4
+      with: 
           name: snyk-output-csv
           path: snyk_output.csv
-          
-      - name: Send notification to Slack
-        uses: slackapi/slack-github-action@v1.24.0
-        if: always()
-        with:
+      
+    - name: Send notification to Slack
+      uses: slackapi/slack-github-action@v1.24.0
+      if: always()
+      with:
           payload: |
             {
               "text": "*The Snyk scan result for repo is : ${{ job.status }}* \n*Number of Vulnerabilities : ${{ env.Results_Length }}* \n*Detail*: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }
-        env:
+      env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
