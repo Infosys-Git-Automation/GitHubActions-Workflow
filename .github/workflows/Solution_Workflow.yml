@@ -1,7 +1,6 @@
 name: Solution Workflow
 
 on:
-  push:
   pull_request:
     types: [opened, edited]
 
@@ -63,7 +62,7 @@ jobs:
     - name: Install Snyk & Authenticate
       run: |
           sudo npm install -g snyk
-          snyk auth ${{ secrets.SNYK_TOKEN }}
+          echo "${{ secrets.SNYK_TOKEN }}" | snyk auth
           
     - name: Run Snyk to check for vulnerabilities
       uses: snyk/actions/python@master
